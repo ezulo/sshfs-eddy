@@ -8,9 +8,6 @@ import (
     "github.com/gotk3/gotk3/gtk"
 )
 
-const TESTLINE0 = "jimmy_md0  22 rsa /home/eduardo/.ssh/id_ed21559 /mnt/md0  /mnt/sshfs/jimmy/md0 "
-const TESTLINE1 = "jimmy_sdb1 22 rsa /home/eduardo/.ssh/id_ed21559 /mnt/sdb1 /mnt/sshfs/jimmy/sdb1"
-
 // GTK: Incrementing enum for column headers
 const (
     COLUMN_ID int = iota
@@ -40,6 +37,11 @@ type mountpoint struct {
     local_dir   string
     state       int
 }
+
+// Globals
+var (
+    ListStore *gtk.ListStore
+)
 
 func stateToString(state int) (string, error) {
     switch (state) {
@@ -175,17 +177,53 @@ func getMountPoints() []mountpoint {
     return mp
 }
 
+func treeSelectionChangedCB(selection *gtk.TreeSelection) {
+    log.Printf("Selection changed")
+    var iter *gtk.TreeIter
+	var model gtk.ITreeModel
+	var ok bool
+	model, iter, ok = selection.GetSelected()
+    if !ok {
+        log.Printf("Could not get path from model")
+        return
+    }
+    tpath, err := model.(*gtk.TreeModel).GetPath(iter)
+    if err != nil {
+        log.Printf("treeSelectionChangedCB: Could not get path from model: %s\n", err)
+        return
+    }
+    val, err := ListStore.GetValue(iter, 0)
+    if err != nil {
+        log.Printf("treeSelectionChangedCB: could not find data for selection.")
+        return
+    }
+    valString, err := val.GoValue()
+    if err != nil {
+        log.Printf("treeSelectionChangedCB: value could not be converted to Go type.")
+        return
+    }
+    log.Printf("value: %s", valString)
+    return
+}
+
 func main() {
-    // Create Gtk Application, change appID to your application domain name reversed.
-    const appID = "org.gtk.example"
+    const appID = "org.gtk.sshfs-eddy"
     gtk.Init(nil)
     win := setupWindow(appID)
     treeView, listStore := setupTreeView()
+    ListStore = listStore
     win.Add(treeView)
     mp := getMountPoints()
     for i := range mp {
         addRow(listStore, mp[i])
     }
+
+    treeSelection, err := treeView.GetSelection()
+    if err != nil {
+        log.Fatal("Could not get tree selection for init:", err)
+    }
+    treeSelection.Connect("changed", treeSelectionChangedCB)
+
     win.ShowAll()
     gtk.Main()
 }
