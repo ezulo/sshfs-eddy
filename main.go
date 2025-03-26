@@ -34,13 +34,14 @@ type mountpoint struct {
     auth_type   string
     auth_key    string
     remote_dir  string
-    local_dir   string
+    local_dir   string 
     state       int
 }
 
 // Globals
 var (
     ListStore *gtk.ListStore
+    SelectedMount *mountpoint
 )
 
 func stateToString(state int) (string, error) {
@@ -90,7 +91,7 @@ func setupTreeView() (*gtk.TreeView, *gtk.ListStore) {
         glib.TYPE_STRING,
         glib.TYPE_STRING, 
         glib.TYPE_STRING,
-        glib.TYPE_STRING,
+        glib.TYPE_INT,
     )
     if err != nil {
         log.Fatal("Unable to create list store:", err)
@@ -177,32 +178,43 @@ func getMountPoints() []mountpoint {
     return mp
 }
 
+func convertGlibValueToGoValue[T int | string](iter *gtk.TreeIter, idx int) (T, error) {
+    raw_value, err := ListStore.GetValue(iter, idx)
+    var err_value T
+    if err != nil {
+        return err_value, err
+    }
+    go_value, err := raw_value.GoValue()
+    if err != nil {
+        return err_value, err
+    }
+    return go_value.(T), nil
+}
+
 func treeSelectionChangedCB(selection *gtk.TreeSelection) {
     log.Printf("Selection changed")
     var iter *gtk.TreeIter
-	var model gtk.ITreeModel
+	//var model gtk.ITreeModel
 	var ok bool
-	model, iter, ok = selection.GetSelected()
+	_, iter, ok = selection.GetSelected()
     if !ok {
         log.Printf("Could not get path from model")
         return
     }
-    tpath, err := model.(*gtk.TreeModel).GetPath(iter)
-    if err != nil {
-        log.Printf("treeSelectionChangedCB: Could not get path from model: %s\n", err)
-        return
+    id, _           := convertGlibValueToGoValue[string](iter, 0)
+    hostname, _     := convertGlibValueToGoValue[string](iter, 1)
+    port, _         := convertGlibValueToGoValue[int](iter, 2)
+    auth_type, _    := convertGlibValueToGoValue[string](iter, 3)
+    auth_key, _     := convertGlibValueToGoValue[string](iter, 4)
+    remote_dir, _   := convertGlibValueToGoValue[string](iter, 5)
+    local_dir, _    := convertGlibValueToGoValue[string](iter, 6)
+    state, _        := convertGlibValueToGoValue[int](iter, 7)
+
+    selectedMountpoint := mountpoint {
+        id, hostname, port, auth_type,
+        auth_key, remote_dir, local_dir, state,
     }
-    val, err := ListStore.GetValue(iter, 0)
-    if err != nil {
-        log.Printf("treeSelectionChangedCB: could not find data for selection.")
-        return
-    }
-    valString, err := val.GoValue()
-    if err != nil {
-        log.Printf("treeSelectionChangedCB: value could not be converted to Go type.")
-        return
-    }
-    log.Printf("value: %s", valString)
+    log.Printf("%+v\n", selectedMountpoint)
     return
 }
 
