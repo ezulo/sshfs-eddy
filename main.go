@@ -23,8 +23,8 @@ const (
 // Enum for mountpoint state
 const (
     MOUNT_STATE_UNKNOWN int = iota
-    MOUNT_STATE_UNMOUNTED   = 1
-    MOUNT_STATE_MOUNTED     = 2
+    MOUNT_STATE_UNMOUNTED
+    MOUNT_STATE_MOUNTED
 )
 
 type mountpoint struct {
